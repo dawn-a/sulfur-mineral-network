@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+.links line {
+  stroke: #999;
+  stroke-opacity: 0.6;
+}
+
+.nodes circle {
+  stroke: #fff;
+  stroke-width: 1px;
+}
+
+</style>
+<body>
+  <svg></svg>
+</body>
+<script src="../d3.v4.min.js"></script>
+<script>
+
+renderGraph("S_unipartite.json");
+
+function renderGraph(filename) {
+
+
+    var svg = d3.select("svg"),
+      // width = +svg.attr("width"),
+      width = +window.screen.availWidth,
+      // height = +svg.attr("height");
+      height = +window.screen.availHeight;
+
+    svg.attr("width",width);
+    svg.attr("height",height);
+
+    d3.selectAll("svg > *").remove();
+
+    var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+    var simulation = d3.forceSimulation()
+        .force("link", d3.forceLink().id(function(d) { return d.name; })
+                                     .distance(function(d) { return 1/Math.log(d.n+9); }))
+        .force("charge", d3.forceManyBody())
+        .force("center", d3.forceCenter(width/2, -350));
+
+
+    d3.json(filename, function(error, graph) {
+      if (error) throw error;
+
+      var link = svg.append("g")
+          .attr("class", "links")
+        .selectAll("line")
+        .data(graph.links)
+        .enter().append("line")
+          .attr("stroke-width", function(d) { return 0.5; });
+
+      var node = svg.append("g")
+          .attr("class", "nodes")
+        .selectAll("circle")
+        .data(graph.nodes)
+        .enter().append("circle")
+          .attr("r", function(d) { return Math.LOG2E*Math.log(d.size+1); })
+          .attr("fill", function(d) { 
+            if (d.group == 0) {
+                    return "#1f77b4";
+                } else if(d.group == 1){
+                    return '#e92224';
+                } else{
+                  return '#00b050'
+                }; })
+          .call(d3.drag()
+              .on("start", dragstarted)
+              .on("drag", dragged)
+              .on("end", dragended));
+
+      node.append("title")
+          .text(function(d) { return d.name; });
+
+
+
+      // var legend = svg.selectAll(".legend")
+      //     .data(color.domain())
+      //     .enter().append("g")
+      //     .attr("class", "legend")
+      //     .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+      // legend.append("rect")
+      //     .attr("x", width - 18)
+      //     .attr("width", 18)
+      //     .attr("height", 18)
+      //     .style("fill", color);
+
+      // legend.append("text")
+      //     .attr("x", width - 24)
+      //     .attr("y", 9)
+      //     .attr("dy", ".35em")
+      //     .style("text-anchor", "end")
+      //     .text(function(d) { return d; });
+
+      simulation
+          .nodes(graph.nodes)
+          .on("tick", ticked);
+
+
+      simulation.force("link")
+          .links(graph.links);
+
+      svg.call(d3.zoom().on("zoom", function () {svg.attr("transform", d3.event.transform)})).append("g"),
+                        width = +svg.attr("width"),
+                        height = +svg.attr("height");
+
+      function ticked() {
+        link
+            .attr("x1", function(d) { return d.source.x; })
+            .attr("y1", function(d) { return -d.source.y; })
+            .attr("x2", function(d) { return d.target.x; })
+            .attr("y2", function(d) { return -d.target.y; });
+
+        node
+            .attr("cx", function(d) { return d.x; })
+            .attr("cy", function(d) { return -d.y; });
+      }
+  });
+
+  function dragstarted(d) {
+    if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+    d.fx = d.x;
+    d.fy = d.y;
+  }
+
+  function dragged(d) {
+    d.fx = d3.event.x;
+    d.fy = d3.event.y;
+  }
+
+  function dragended(d) {
+    if (!d3.event.active) simulation.alphaTarget(0);
+    d.fx = null;
+    d.fy = null;
+  }
+
+  function zoomed() {
+      simulation.attr("transform", d3.event.transform);
+      gX.call(xAxis.scale(d3.event.transform.rescaleX(x)));
+      gY.call(yAxis.scale(d3.event.transform.rescaleY(y)));
+    }
+
+    function resetted() {
+      svg.transition()
+          .duration(750)
+          .call(zoom.transform, d3.zoomIdentity);
+    }
+
+}
+
+</script>
